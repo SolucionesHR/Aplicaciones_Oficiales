@@ -1,5 +1,8 @@
 name: 📦 Publicar App desde Repos Privado
 
+permissions:
+  contents: write  # 👈 Esto permite hacer push en el repo
+
 on:
   workflow_dispatch:
     inputs:
