@@ -1,0 +1,66 @@
+name: 📦 Agregar nueva app o versión desde URL
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Mercados Cuba Mensajeros"
+        required: true
+      version:
+        description: "Versión 1.0.5"
+        required: true
+      description:
+        description: "App para los mensajeros. Resiven el pedido, lo aceptetan, lo llegan y le tiran foto cuando lo entregan. Cuando aceptan un peddio se les puede seguir porque envian su ubicacion."
+        required: true
+      file_url:
+        description: "https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v/__android.apk"
+        required: true
+
+jobs:
+  add_app:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Clonar el repositorio
+        uses: actions/checkout@v4
+
+      - name: 📥 Descargar archivo desde la URL
+        run: |
+          mkdir -p "apps/${{ github.event.inputs.app_name }}"
+          cd "apps/${{ github.event.inputs.app_name }}"
+          echo "Descargando archivo..."
+          wget -q "${{ github.event.inputs.file_url }}" -O "${{ github.event.inputs.app_name }}_${{ github.event.inputs.version }}.apk"
+          echo "✅ Archivo descargado: ${PWD}/${{ github.event.inputs.app_name }}_${{ github.event.inputs.version }}.apk"
+
+      - name: ✏️ Actualizar README.md
+        run: |
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          VERSION="${{ github.event.inputs.version }}"
+          DESC="${{ github.event.inputs.description }}"
+          LINK="https://github.com/${{ github.repository }}/tree/main/apps/${APP_NAME}"
+
+          # Si no existe el archivo README, lo creamos
+          if [ ! -f README.md ]; then
+            echo "# 🚀 Aplicaciones Oficiales de Soluciones HR" > README.md
+            echo "" >> README.md
+            echo "| Aplicación | Descripción | Versión | Descarga |" >> README.md
+            echo "|-------------|--------------|----------|-----------|" >> README.md
+          fi
+
+          # Verifica si ya existe la app en la tabla
+          if grep -q "${APP_NAME}" README.md; then
+            echo "🔄 Actualizando versión existente..."
+            sed -i "s|\(${APP_NAME}.*|\1|" README.md
+            sed -i "s|\(${APP_NAME}.*|\1|" README.md
+          else
+            echo "🆕 Agregando nueva app al README..."
+            echo "| **${APP_NAME}** | ${DESC} | ${VERSION} | [📥 Descargar](${LINK}) |" >> README.md
+          fi
+
+      - name: 💾 Confirmar y subir cambios
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          git commit -m "📦 Agregada/Actualizada app: ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}"
+          git push
