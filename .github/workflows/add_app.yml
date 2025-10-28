@@ -1,66 +1,72 @@
-name: 📦 Agregar nueva app o versión desde URL
+name: 📦 Publicar App desde Repos Privado
 
 on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Nombre de la aplicación (ej: CryptoPredict)"
+        description: "Nombre de la app (ej: Mercados Cuba Delivery)"
         required: true
       version:
         description: "Versión (ej: 1.0.0)"
         required: true
-      description:
-        description: "Descripción breve (ej: App de predicción de criptomonedas)"
-        required: true
       file_url:
-        description: "URL del archivo APK o instalador (.apk, .exe, .zip, etc)"
+        description: "URL directa del release privado (ej: https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v1.0.0/__android.apk)"
         required: true
+      platform:
+        description: "Plataforma (ej: Android)"
+        required: true
+        default: "Android"
 
 jobs:
-  add_app:
+  publicar:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
     steps:
-      - name: 🧾 Clonar el repositorio
+      - name: 🧩 Checkout del repositorio público
         uses: actions/checkout@v4
 
-      - name: 📥 Descargar archivo desde la URL
+      - name: 📁 Preparar carpeta
         run: |
-          mkdir -p "apps/${{ github.event.inputs.app_name }}"
-          cd "apps/${{ github.event.inputs.app_name }}"
-          echo "Descargando archivo..."
-          wget -q "${{ github.event.inputs.file_url }}" -O "${{ github.event.inputs.app_name }}_${{ github.event.inputs.version }}.apk"
-          echo "✅ Archivo descargado: ${PWD}/${{ github.event.inputs.app_name }}_${{ github.event.inputs.version }}.apk"
+          SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' )
+          SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
+          mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
 
-      - name: ✏️ Actualizar README.md
+      - name: 📥 Descargar build desde repo privado
         run: |
-          APP_NAME="${{ github.event.inputs.app_name }}"
-          VERSION="${{ github.event.inputs.version }}"
-          DESC="${{ github.event.inputs.description }}"
-          LINK="https://github.com/${{ github.repository }}/tree/main/apps/${APP_NAME}"
+          SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' )
+          SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
+          cd "apps/$SAFE_APP/$SAFE_PLATFORM"
 
-          # Si no existe el archivo README, lo creamos
-          if [ ! -f README.md ]; then
-            echo "# 🚀 Aplicaciones Oficiales de Soluciones HR" > README.md
-            echo "" >> README.md
-            echo "| Aplicación | Descripción | Versión | Descarga |" >> README.md
-            echo "|-------------|--------------|----------|-----------|" >> README.md
+          echo "Descargando build desde: ${{ github.event.inputs.file_url }}"
+          if ! curl -L -H "Authorization: token $GH_TOKEN" \
+               -o "${SAFE_APP}_${SAFE_PLATFORM}_${{ github.event.inputs.version }}.apk" \
+               "${{ github.event.inputs.file_url }}"; then
+            echo "❌ Error: No se pudo descargar el archivo."
+            exit 1
+          fi
+          echo "✅ Archivo descargado correctamente."
+
+      - name: 📝 Actualizar README con nueva app
+        run: |
+          APP="${{ github.event.inputs.app_name }}"
+          VER="${{ github.event.inputs.version }}"
+          PLATFORM="${{ github.event.inputs.platform }}"
+          SAFE_APP=$(echo "$APP" | tr ' ' '_' )
+          SAFE_PLATFORM=$(echo "$PLATFORM" | tr ' ' '_' )
+          FILE_PATH="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.apk"
+
+          LINE="| $APP | $PLATFORM | $VER | [Descargar]($FILE_PATH) |"
+
+          if ! grep -q "$FILE_PATH" README.md; then
+            echo "$LINE" >> README.md
           fi
 
-          # Verifica si ya existe la app en la tabla
-          if grep -q "${APP_NAME}" README.md; then
-            echo "🔄 Actualizando versión existente..."
-            sed -i "s|\(${APP_NAME}.*|\1|" README.md
-            sed -i "s|\(${APP_NAME}.*|\1|" README.md
-          else
-            echo "🆕 Agregando nueva app al README..."
-            echo "| **${APP_NAME}** | ${DESC} | ${VERSION} | [📥 Descargar](${LINK}) |" >> README.md
-          fi
-
-      - name: 💾 Confirmar y subir cambios
+      - name: 💾 Commit y push de cambios
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "📦 Agregada/Actualizada app: ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}"
+          git commit -m "📦 Publicada ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}"
           git push
