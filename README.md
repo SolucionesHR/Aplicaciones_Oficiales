@@ -12,6 +12,18 @@
   <a href="mailto:solucioneshr.soft@gmail.com"><img src="https://img.shields.io/badge/📧%20Contáctanos-solucioneshr.soft@gmail.com-green?style=for-the-badge"></a>
 </div>
 
+---
+
+## 📱 Aplicaciones disponibles
+
+Estas son las aplicaciones desarrolladas y mantenidas por **Soluciones HR**.  
+Todas las versiones se generan automáticamente desde nuestros repositorios privados y se publican aquí para descarga directa.
+
+
+| Aplicación | Descripción | Versión | Descarga |
+|-------------|--------------|----------|-----------|
+
+---
 
 ## 🧠 ¿Quiénes somos?
 
