@@ -4,16 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Mercados Cuba Mensajeros"
+        description: "Nombre de la aplicación (ej: CryptoPredict)"
         required: true
       version:
-        description: "Versión 1.0.5"
+        description: "Versión (ej: 1.0.0)"
         required: true
       description:
-        description: "App para los mensajeros. Resiven el pedido, lo aceptetan, lo llegan y le tiran foto cuando lo entregan. Cuando aceptan un peddio se les puede seguir porque envian su ubicacion."
+        description: "Descripción breve (ej: App de predicción de criptomonedas)"
         required: true
       file_url:
-        description: "https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v/__android.apk"
+        description: "URL del archivo APK o instalador (.apk, .exe, .zip, etc)"
         required: true
 
 jobs:
