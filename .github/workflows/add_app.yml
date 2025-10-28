@@ -1,24 +1,27 @@
-name: 📦 Publicar App desde Repos Privado
+name: 📦 Publicar App Simple con Catálogo Visual
 
 permissions:
-  contents: write  # 👈 Esto permite hacer push en el repo
+  contents: write
 
 on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Nombre de la app"
+        description: "Nombre de la app (ej: Mercados Cuba Mensajeros)"
         required: true
       version:
-        description: "Versión"
+        description: "Versión (ej: 1.0.5)"
         required: true
       file_url:
-        description: "URL directa del release privado (ej: https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v1.0.0/__android.apk)"
+        description: "URL del release privado (APK, ZIP, etc.)"
         required: true
       platform:
-        description: "Plataforma"
+        description: "Plataforma (ej: Android)"
         required: true
         default: "Android"
+      icon_url:
+        description: "URL del ícono de la app (opcional)"
+        required: false
 
 jobs:
   publicar:
@@ -27,8 +30,10 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
     steps:
-      - name: 🧩 Checkout del repositorio público
+      - name: 🧩 Checkout repo público
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
       - name: 📁 Preparar carpeta
         run: |
@@ -36,40 +41,50 @@ jobs:
           SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
           mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
 
-      - name: 📥 Descargar build desde repo privado
+      - name: 📥 Descargar build privado
         run: |
           SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' )
           SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
           cd "apps/$SAFE_APP/$SAFE_PLATFORM"
-
           echo "Descargando build desde: ${{ github.event.inputs.file_url }}"
-          if ! curl -L -H "Authorization: token $GH_TOKEN" \
+          curl -L -H "Authorization: token $GH_TOKEN" \
                -o "${SAFE_APP}_${SAFE_PLATFORM}_${{ github.event.inputs.version }}.apk" \
-               "${{ github.event.inputs.file_url }}"; then
-            echo "❌ Error: No se pudo descargar el archivo."
-            exit 1
-          fi
-          echo "✅ Archivo descargado correctamente."
+               "${{ github.event.inputs.file_url }}"
+          echo "✅ Descargado correctamente."
 
-      - name: 📝 Actualizar README con nueva app
+      - name: 🖼️ Actualizar README.md con tabla y catálogo visual
         run: |
           APP="${{ github.event.inputs.app_name }}"
           VER="${{ github.event.inputs.version }}"
           PLATFORM="${{ github.event.inputs.platform }}"
+          ICON="${{ github.event.inputs.icon_url }}"
           SAFE_APP=$(echo "$APP" | tr ' ' '_' )
           SAFE_PLATFORM=$(echo "$PLATFORM" | tr ' ' '_' )
           FILE_PATH="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.apk"
 
-          LINE="| $APP | $PLATFORM | $VER | [Descargar]($FILE_PATH) |"
-
+          # Tabla simple
           if ! grep -q "$FILE_PATH" README.md; then
-            echo "$LINE" >> README.md
+            echo -e "\n## 📱 $APP v$VER\n" >> README.md
+            echo "| Plataforma | Versión | Descarga |" >> README.md
+            echo "|-----------|---------|-----------|" >> README.md
+            echo "| $PLATFORM | $VER | [📥 Descargar]($FILE_PATH) |" >> README.md
           fi
 
-      - name: 💾 Commit y push de cambios
+          # Catálogo visual superior
+          CATALOG="<div align='center'>"
+          [ -n "$ICON" ] && CATALOG+="<img src='$ICON' width='80' />"
+          CATALOG+="<h3>$APP v$VER</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'>"
+          CATALOG+="<div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'>"
+          CATALOG+="<p>$PLATFORM</p>"
+          CATALOG+="<a href='$FILE_PATH' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a>"
+          CATALOG+="</div></div></div>\n"
+
+          echo -e "$CATALOG$(cat README.md)" > README.md
+
+      - name: 💾 Commit y push
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "📦 Publicada ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}"
+          git commit -m "📦 Publicada $APP v$VER con catálogo visual"
           git push
