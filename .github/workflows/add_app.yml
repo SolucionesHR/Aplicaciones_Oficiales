@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Nombre de la app (ej: Mercados Cuba Delivery)"
+        description: "Nombre de la app"
         required: true
       version:
-        description: "Versión (ej: 1.0.0)"
+        description: "Versión"
         required: true
       file_url:
         description: "URL directa del release privado (ej: https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v1.0.0/__android.apk)"
         required: true
       platform:
-        description: "Plataforma (ej: Android)"
+        description: "Plataforma"
         required: true
         default: "Android"
 
