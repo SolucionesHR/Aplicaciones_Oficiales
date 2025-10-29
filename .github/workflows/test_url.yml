@@ -1,0 +1,52 @@
+name: Debug Private Download
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_url:
+        description: 'URL del archivo en el release privado (ej: https://github.com/usuario/repo/releases/download/v1.0.0/app.apk)'
+        required: true
+        type: string
+
+jobs:
+  debug-download:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Mostrar configuración
+        run: |
+          echo "🔗 URL del archivo: ${{ github.event.inputs.file_url }}"
+
+      - name: Debug download with verbose curl
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          FILE_URL="${{ github.event.inputs.file_url }}"
+          echo "🔍 Probando descarga manual del archivo:"
+          echo "URL: $FILE_URL"
+
+          # Mostrar los últimos 4 dígitos del token de forma segura
+          TOKEN_SUFFIX=$(echo "$GH_TOKEN" | tail -c 5)
+          echo "🔑 Token (últimos 4 dígitos): ${TOKEN_SUFFIX}"
+
+          echo ""
+          echo "🚀 Ejecutando curl en modo verbose para ver encabezados y respuestas:"
+          echo ""
+
+          curl -v \
+            -L \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            "$FILE_URL" \
+            -o test.apk \
+            -w "\n📊 Código HTTP final: %{http_code}\n"
+
+          echo ""
+          echo "📦 Resultado:"
+          if [ -s "test.apk" ]; then
+            echo "✅ Archivo descargado correctamente:"
+            ls -lh test.apk
+          else
+            echo "❌ No se pudo descargar el archivo o está vacío"
+            echo "🔎 Revisa los encabezados de respuesta mostrados arriba para más detalles"
+          fi
