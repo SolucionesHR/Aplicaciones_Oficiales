@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       file_url:
-        description: 'URL del archivo a descargar'
+        description: 'URL del archivo a descargar (ej: https://github.com/usuario/repo/releases/download/v1.0.0/app.apk)'
         required: true
         type: string
       app_name:
@@ -24,7 +24,6 @@ on:
         description: 'URL del repositorio público (ej: https://github.com/usuario/repo)'
         required: true
         type: string
-        default: 'https://github.com/SolucionesHR/Aplicaciones_Oficiales'
       release_notes:
         description: 'Notas del release (opcional)'
         required: false
@@ -43,7 +42,43 @@ jobs:
           echo "Versión: ${{ github.event.inputs.version }}"
           echo "Repo público: ${{ github.event.inputs.public_repo_url }}"
 
+      - name: Validate URL
+        run: |
+          FILE_URL="${{ github.event.inputs.file_url }}"
+          
+          echo "🔍 Validando URL..."
+          
+          # Validar que sea una URL válida
+          if [[ ! "$FILE_URL" =~ ^https?:// ]]; then
+            echo "❌ Error: La URL debe comenzar con http:// o https://"
+            exit 1
+          fi
+          
+          # Validar que contenga /download/
+          if [[ ! "$FILE_URL" =~ /download/ ]]; then
+            echo "❌ Error: La URL debe ser una URL de descarga"
+            exit 1
+          fi
+          
+          # Validar que tenga extensión de archivo
+          if [[ ! "$FILE_URL" =~ \.[a-zA-Z0-9]+$ ]]; then
+            echo "❌ Error: La URL debe terminar con una extensión de archivo (.apk, .exe, .dmg, etc)"
+            exit 1
+          fi
+          
+          # Validar que no tenga placeholders
+          if [[ "$FILE_URL" =~ __.*__ ]]; then
+            echo "❌ Error: La URL contiene placeholders (__)"
+            echo "   Asegúrate de reemplazar v/__ con la versión real (ej: v1.0.5)"
+            exit 1
+          fi
+          
+          echo "✅ URL válida: $FILE_URL"
+
       - name: Download file
+        env:
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          PRIVATE_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
           mkdir -p downloads
           cd downloads
@@ -52,11 +87,39 @@ jobs:
           
           echo "📥 Descargando archivo desde: $FILE_URL"
           
-          # Descargar el archivo
-          wget --content-disposition "$FILE_URL" -q
+          # Usar token para autenticación si el repo es privado
+          TOKEN="${PRIVATE_TOKEN:-$GITHUB_TOKEN}"
+          
+          # Descargar el archivo con autenticación
+          for i in {1..3}; do
+            curl -L \
+              -H "Authorization: token $TOKEN" \
+              -H "Accept: application/octet-stream" \
+              "$FILE_URL" \
+              -o "temp_file" \
+              --fail \
+              -s
+            
+            if [ $? -eq 0 ]; then
+              # Obtener el nombre del archivo de la URL
+              FILENAME=$(basename "$FILE_URL")
+              mv "temp_file" "$FILENAME"
+              echo "✅ Archivo descargado exitosamente"
+              break
+            fi
+            
+            if [ $i -lt 3 ]; then
+              echo "⚠️  Intento $i falló, reintentando..."
+              sleep 2
+            fi
+          done
           
           if [ $? -ne 0 ]; then
-            echo "❌ Error descargando el archivo"
+            echo "❌ Error descargando el archivo después de 3 intentos"
+            echo "📝 Verifica que:"
+            echo "   - La URL es correcta"
+            echo "   - Tienes permisos para acceder al repositorio privado"
+            echo "   - El token PRIVATE_REPO_TOKEN está configurado"
             exit 1
           fi
           
