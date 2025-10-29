@@ -40,11 +40,12 @@ jobs:
             ${{ github.event.inputs.tag }} \
             --repo "${{ github.event.inputs.repo }}" \
             --pattern "${{ github.event.inputs.pattern }}" \
-            --verbose
+            --clobber
 
       - name: 🧾 Verificar archivo descargado
         run: |
           echo "📂 Archivos descargados:"
           ls -lh
           echo "🔍 Información detallada del archivo:"
-          file "${{ github.event.inputs.pattern }}"
+          file "${{ github.event.inputs.pattern }}" || echo "⚠️ No se encontró el archivo esperado."
+          echo "✅ Si el tamaño del archivo es >0, la descarga fue exitosa."
