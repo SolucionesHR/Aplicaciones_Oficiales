@@ -57,14 +57,25 @@ jobs:
           fi
           
           # Extraer usuario/repo de la URL
+          # Soporta dos formatos:
           # Ej: https://github.com/usuario/repo/releases/tag/v1.0.0
+          # Ej: https://github.com/usuario/repo/releases/download/v1.0.0/archivo
           REPO=$(echo "$URL" | sed 's|.*github.com/||' | sed 's|/releases.*||' | sed 's|\.git$||')
           
           # Extraer el tag de la URL
+          # Intenta primero el formato /tag/
           TAG=$(echo "$URL" | grep -oP '(?<=/tag/)[^/]+' || echo "")
+          
+          # Si no encuentra /tag/, intenta el formato /download/
+          if [ -z "$TAG" ]; then
+            TAG=$(echo "$URL" | grep -oP '(?<=/download/)[^/]+' || echo "")
+          fi
           
           if [ -z "$TAG" ]; then
             echo "❌ Error: No se pudo extraer el tag de la URL"
+            echo "📝 Formatos soportados:"
+            echo "   - https://github.com/usuario/repo/releases/tag/v1.0.0"
+            echo "   - https://github.com/usuario/repo/releases/download/v1.0.0/archivo.apk"
             exit 1
           fi
           
