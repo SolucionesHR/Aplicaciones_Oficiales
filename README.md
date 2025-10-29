@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/youruser/flutter-downloads/main/assets/hr_logo.png" alt="Soluciones HR" width="120" />
+  <img src="https://raw.githubusercontent.com/SolucionesHR/Aplicaciones_Oficiales/main/assets/logo_solucioneshr.png" alt="Soluciones HR" width="120" />
 
   # 🚀 Aplicaciones Oficiales de **Soluciones HR**
 
