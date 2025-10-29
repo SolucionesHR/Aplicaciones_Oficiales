@@ -1,52 +1,52 @@
-name: Debug Private Download
+name: 🧪 Debug Private Download (GH CLI)
 
 on:
   workflow_dispatch:
     inputs:
-      file_url:
-        description: 'URL del archivo en el release privado (ej: https://github.com/usuario/repo/releases/download/v1.0.0/app.apk)'
+      repo:
+        description: "Repositorio privado (formato: owner/repo)"
         required: true
-        type: string
+        default: "SolucionesHR/mercados_cuba_delivery"
+      tag:
+        description: "Tag o versión del release"
+        required: true
+        default: "v1.0.5"
+      pattern:
+        description: "Patrón del nombre del archivo a descargar (puede ser *.apk)"
+        required: true
+        default: "mensajero.apk"
 
 jobs:
-  debug-download:
+  debug-gh-download:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Mostrar configuración
-        run: |
-          echo "🔗 URL del archivo: ${{ github.event.inputs.file_url }}"
+      - name: 🏁 Iniciar flujo
+        run: echo "🔍 Iniciando descarga privada con gh release download..."
 
-      - name: Debug download with verbose curl
+      - name: 🔑 Configurar GH CLI
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
-          FILE_URL="${{ github.event.inputs.file_url }}"
-          echo "🔍 Probando descarga manual del archivo:"
-          echo "URL: $FILE_URL"
+          echo "✅ Autenticando GH CLI con token..."
+          echo "$GH_TOKEN" | gh auth login --with-token
+          echo "👤 Usuario autenticado:"
+          gh auth status
 
-          # Mostrar los últimos 4 dígitos del token de forma segura
-          TOKEN_SUFFIX=$(echo "$GH_TOKEN" | tail -c 5)
-          echo "🔑 Token (últimos 4 dígitos): ${TOKEN_SUFFIX}"
+      - name: 📦 Descargar asset desde release privado
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+        run: |
+          echo "📥 Descargando desde ${{ github.event.inputs.repo }} - tag ${{ github.event.inputs.tag }}"
+          gh release download \
+            ${{ github.event.inputs.tag }} \
+            --repo "${{ github.event.inputs.repo }}" \
+            --pattern "${{ github.event.inputs.pattern }}" \
+            --verbose
 
-          echo ""
-          echo "🚀 Ejecutando curl en modo verbose para ver encabezados y respuestas:"
-          echo ""
-
-          curl -v \
-            -L \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/octet-stream" \
-            "$FILE_URL" \
-            -o test.apk \
-            -w "\n📊 Código HTTP final: %{http_code}\n"
-
-          echo ""
-          echo "📦 Resultado:"
-          if [ -s "test.apk" ]; then
-            echo "✅ Archivo descargado correctamente:"
-            ls -lh test.apk
-          else
-            echo "❌ No se pudo descargar el archivo o está vacío"
-            echo "🔎 Revisa los encabezados de respuesta mostrados arriba para más detalles"
-          fi
+      - name: 🧾 Verificar archivo descargado
+        run: |
+          echo "📂 Archivos descargados:"
+          ls -lh
+          echo "🔍 Información detallada:"
+          file "${{ github.event.inputs.pattern }}"
