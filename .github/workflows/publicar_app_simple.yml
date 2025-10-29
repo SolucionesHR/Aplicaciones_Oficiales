@@ -1,136 +1,235 @@
-name: 📦 Publicar App Simple con Catálogo Visual
-
-permissions:
-  contents: write
+name: Copy Release to Public Repo (Manual)
 
 on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Nombre de la app (ej: Mercados Cuba Mensajeros)"
+        description: 'Nombre de la aplicación'
         required: true
+        type: string
+        default: 'MyApp'
       version:
-        description: "Versión (ej: 1.0.5)"
+        description: 'Versión del release (ej: v1.0.0)'
         required: true
-      file_url:
-        description: "URL del release privado (APK, ZIP, etc.)"
+        type: string
+        default: 'v1.0.0'
+      private_repo_url:
+        description: 'URL del repositorio privado (ej: https://github.com/usuario/repo-privado)'
         required: true
-      platform:
-        description: "Plataforma (ej: Android)"
+        type: string
+      public_repo_url:
+        description: 'URL del repositorio público (ej: https://github.com/usuario/repo)'
         required: true
-        default: "Android"
-      icon_url:
-        description: "URL del ícono de la app (opcional)"
+        type: string
+      release_notes:
+        description: 'Notas del release (opcional)'
         required: false
+        type: string
+        default: ''
+      platforms:
+        description: 'Plataformas a procesar (separadas por coma: android,windows,ios,macos,linux)'
+        required: true
+        type: string
+        default: 'android,windows'
 
 jobs:
-  publicar:
+  copy-release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 🧩 Checkout repo público
+      - name: Validate inputs
+        run: |
+          echo "📋 Configuración del workflow:"
+          echo "App: ${{ github.event.inputs.app_name }}"
+          echo "Versión: ${{ github.event.inputs.version }}"
+          echo "Repo público: ${{ github.event.inputs.public_repo_url }}"
+          echo "Plataformas: ${{ github.event.inputs.platforms }}"
+          
+          # Validar que la versión comience con 'v'
+          if [[ ! "${{ github.event.inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "❌ Error: La versión debe estar en formato v1.0.0"
+            exit 1
+          fi
+
+      - name: Checkout private repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          fetch-depth: 0
 
-      - name: 📁 Preparar carpeta
+      - name: Create release assets directory
         run: |
-          SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
+          mkdir -p release-assets
+          echo "📁 Directorio de assets creado"
 
-      - name: 📥 Descargar build privado
+      - name: Download release assets from current repo
         env:
-          PRIVATE_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
-          FILE_URL: ${{ github.event.inputs.file_url }}
+          GITHUB_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
-          SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          VER="${{ github.event.inputs.version }}"
-          cd "apps/$SAFE_APP/$SAFE_PLATFORM"
+          # Obtener el ID del release por tag
+          RELEASE_ID=$(gh release view "${{ github.event.inputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --json id -q '.id' 2>/dev/null || echo "")
           
-          # Validación básica de URL
-          if [[ ! "$FILE_URL" =~ ^https://github.com/.*releases/download/.* ]]; then
-            echo "❌ URL inválida: Debe ser un link directo de GitHub Release (ej: https://github.com/.../releases/download/v1.0.5/app.apk)"
+          if [ -z "$RELEASE_ID" ]; then
+            echo "⚠️  Release no encontrado en este repositorio"
+            echo "📂 Asegúrate de que el tag existe: ${{ github.event.inputs.version }}"
             exit 1
           fi
           
-          # Extraer nombre base y extensión de file_url
-          FILENAME=$(basename "$FILE_URL")
-          EXT="${FILENAME##*.}"
-          OUTPUT_FILE="${SAFE_APP}_${SAFE_PLATFORM}_${VER}.${EXT}"
+          echo "✅ Release encontrado: $RELEASE_ID"
           
-          echo "Descargando desde: $FILE_URL"
-          echo "Guardando como: $OUTPUT_FILE"
+          # Descargar los assets
+          gh release download "${{ github.event.inputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --dir release-assets
           
-          curl -L -H "Authorization: token $PRIVATE_TOKEN" \
-               --fail \
-               -o "$OUTPUT_FILE" \
-               "$FILE_URL"
-          
-          if [ $? -ne 0 ]; then
-            echo "❌ Error en descarga: Verifica URL y token."
-            exit 1
-          fi
-          
-          FILE_SIZE=$(stat -c%s "$OUTPUT_FILE")
-          if [ "$FILE_SIZE" -eq 0 ]; then
-            echo "❌ Archivo descargado vacío. Verifica el release."
-            exit 1
-          fi
-          
-          echo "✅ Descargado: $OUTPUT_FILE ($((FILE_SIZE / 1024 / 1024)) MB)"
+          echo "📥 Assets descargados:"
+          ls -lah release-assets/
 
-      - name: 🖼️ Actualizar README.md con tabla y catálogo visual
+      - name: Rename files by platform
         run: |
-          APP="${{ github.event.inputs.app_name }}"
-          VER="${{ github.event.inputs.version }}"
-          PLATFORM="${{ github.event.inputs.platform }}"
-          ICON="${{ github.event.inputs.icon_url || '' }}"
-          SAFE_APP=$(echo "$APP" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          SAFE_PLATFORM=$(echo "$PLATFORM" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-          FILENAME=$(basename "${{ github.event.inputs.file_url }}")
-          EXT="${FILENAME##*.}"
-          OUTPUT_FILE="${SAFE_APP}_${SAFE_PLATFORM}_${VER}.${EXT}"
-          FILE_PATH="apps/$SAFE_APP/$SAFE_PLATFORM/$OUTPUT_FILE"
+          cd release-assets
           
-          # Evitar duplicados: chequea si ya existe sección para esta app/version
-          if ! grep -q "## 📱 $APP v$VER" README.md; then
-            # Catálogo visual
-            CATALOG="<div align='center'>"
-            if [ -n "$ICON" ]; then
-              CATALOG+="<img src='$ICON' width='80' alt='$APP' />"
-            fi
-            CATALOG+="<h3>$APP v$VER</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'>"
-            CATALOG+="<div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'>"
-            CATALOG+="<p>$PLATFORM</p>"
-            CATALOG+="<a href='$FILE_PATH' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a>"
-            CATALOG+="</div></div></div>"
-            
-            # Tabla (opcional, si quieres mantenerla; sino, quita esta parte)
-            TABLE="\n## 📱 $APP v$VER\n\n| Plataforma | Versión | Descarga |\n|-----------|---------|-----------|\n| $PLATFORM | $VER | [📥 Descargar]($FILE_PATH) |\n"
-            
-            # Insertar después de "## 📱 Aplicaciones disponibles" (usa sed para precisión)
-            sed -i "/## 📱 Aplicaciones disponibles/a\\$CATALOG$TABLE" README.md
-          else
-            echo "⚠️ Sección para $APP v$VER ya existe. Skip update."
-          fi
+          PLATFORMS="${{ github.event.inputs.platforms }}"
+          APP_NAME="${{ github.event.inputs.app_name }}"
           
-          echo "README actualizado con $FILE_PATH"
+          echo "🔄 Renombrando archivos..."
+          
+          # Procesar cada plataforma
+          IFS=',' read -ra PLATFORM_ARRAY <<< "$PLATFORMS"
+          
+          for platform in "${PLATFORM_ARRAY[@]}"; do
+            platform=$(echo "$platform" | xargs) # Trim whitespace
+            
+            case "$platform" in
+              android)
+                for file in *android* *apk* *aab* 2>/dev/null; do
+                  if [ -f "$file" ]; then
+                    newname="${file//android/$APP_NAME}"
+                    newname="${newname//APK/$APP_NAME}"
+                    newname="${newname//AAB/$APP_NAME}"
+                    if [ "$file" != "$newname" ]; then
+                      mv "$file" "$newname"
+                      echo "  ✓ $file → $newname"
+                    fi
+                  fi
+                done
+                ;;
+              windows)
+                for file in *windows* *win* *exe* *msi* 2>/dev/null; do
+                  if [ -f "$file" ]; then
+                    newname="${file//windows/$APP_NAME}"
+                    newname="${newname//win/$APP_NAME}"
+                    if [ "$file" != "$newname" ]; then
+                      mv "$file" "$newname"
+                      echo "  ✓ $file → $newname"
+                    fi
+                  fi
+                done
+                ;;
+              ios)
+                for file in *ios* *ipa* 2>/dev/null; do
+                  if [ -f "$file" ]; then
+                    newname="${file//ios/$APP_NAME}"
+                    newname="${newname//IPA/$APP_NAME}"
+                    if [ "$file" != "$newname" ]; then
+                      mv "$file" "$newname"
+                      echo "  ✓ $file → $newname"
+                    fi
+                  fi
+                done
+                ;;
+              macos)
+                for file in *macos* *mac* *dmg* 2>/dev/null; do
+                  if [ -f "$file" ]; then
+                    newname="${file//macos/$APP_NAME}"
+                    newname="${newname//mac/$APP_NAME}"
+                    if [ "$file" != "$newname" ]; then
+                      mv "$file" "$newname"
+                      echo "  ✓ $file → $newname"
+                    fi
+                  fi
+                done
+                ;;
+              linux)
+                for file in *linux* *deb* *rpm* *appimage* 2>/dev/null; do
+                  if [ -f "$file" ]; then
+                    newname="${file//linux/$APP_NAME}"
+                    newname="${newname//deb/$APP_NAME}"
+                    newname="${newname//rpm/$APP_NAME}"
+                    if [ "$file" != "$newname" ]; then
+                      mv "$file" "$newname"
+                      echo "  ✓ $file → $newname"
+                    fi
+                  fi
+                done
+                ;;
+            esac
+          done
+          
+          echo "📋 Archivos finales:"
+          ls -lah
 
-      - name: 💾 Commit y push
+      - name: Extract public repo credentials
+        id: extract_repo
+        run: |
+          URL="${{ github.event.inputs.public_repo_url }}"
+          # Convertir https://github.com/usuario/repo a usuario/repo
+          REPO=$(echo "$URL" | sed 's|.*github.com/||' | sed 's|\.git$||')
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
+          echo "Repositorio público: $REPO"
+
+      - name: Upload to public repo
         env:
-          APP: "${{ github.event.inputs.app_name }}"
-          VER: "${{ github.event.inputs.version }}"
-          PLATFORM: "${{ github.event.inputs.platform }}"
+          PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          if ! git diff --staged --quiet; then
-            git commit -m "📦 Publicada $APP v$VER para $PLATFORM (con catálogo visual)"
-            git push
-            echo "✅ Commit y push exitosos."
-          else
-            echo "⚠️ No hay cambios para commit."
+          if [ -z "$PUBLIC_REPO_TOKEN" ]; then
+            echo "❌ Error: PUBLIC_REPO_TOKEN no configurado"
+            echo "⚠️  Agrega el secret PUBLIC_REPO_TOKEN a este repositorio"
+            exit 1
           fi
+          
+          PUBLIC_REPO="${{ steps.extract_repo.outputs.repo }}"
+          VERSION="${{ github.event.inputs.version }}"
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          NOTES="${{ github.event.inputs.release_notes }}"
+          
+          echo "📤 Subiendo release al repositorio público..."
+          
+          # Verificar si el release ya existe
+          RELEASE_EXISTS=$(gh release view "$VERSION" \
+            --repo "$PUBLIC_REPO" \
+            --json id -q '.id' 2>/dev/null || echo "")
+          
+          if [ -z "$RELEASE_EXISTS" ]; then
+            echo "✨ Creando nuevo release..."
+            gh release create "$VERSION" \
+              release-assets/* \
+              --title "$APP_NAME $VERSION" \
+              --notes "$NOTES" \
+              --repo "$PUBLIC_REPO"
+            echo "✅ Release creado exitosamente"
+          else
+            echo "⚠️  El release ya existe, eliminando versión anterior..."
+            gh release delete "$VERSION" \
+              --repo "$PUBLIC_REPO" \
+              --yes
+            
+            gh release create "$VERSION" \
+              release-assets/* \
+              --title "$APP_NAME $VERSION" \
+              --notes "$NOTES" \
+              --repo "$PUBLIC_REPO"
+            echo "✅ Release actualizado exitosamente"
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## ✅ Operación completada"
+          echo ""
+          echo "📦 **Aplicación**: ${{ github.event.inputs.app_name }}"
+          echo "📌 **Versión**: ${{ github.event.inputs.version }}"
+          echo "🔗 **Repositorio**: ${{ github.event.inputs.public_repo_url }}"
+          echo "🎯 **Plataformas**: ${{ github.event.inputs.platforms }}"
+          echo ""
+          echo "Los archivos han sido renombrados y subidos al repositorio público."
