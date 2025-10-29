@@ -41,7 +41,7 @@ jobs:
 
       - name: 📥 Descargar build privado
         env:
-          PRIVATE_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          PRIVATE_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
           FILE_URL: ${{ github.event.inputs.file_url }}
         run: |
           SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
