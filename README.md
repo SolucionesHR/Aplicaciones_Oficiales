@@ -62,5 +62,3 @@ Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.
 © 2025 Soluciones HR. Todos los derechos reservados.
 
 </div>
-
-| Mercados Cuba Mensajeros | Android | 1.0.5 | [Descargar](apps/Mercados_Cuba_Mensajeros/Android/Mercados_Cuba_Mensajeros_Android_1.0.5.apk) |
