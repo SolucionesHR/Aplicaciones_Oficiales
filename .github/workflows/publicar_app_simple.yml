@@ -1,7 +1,7 @@
-name: 📦 Publicar App Simple con Catálogo Visual
+name: 📦 Publicar App desde Repos Privado
 
 permissions:
-  contents: write
+  contents: write  # 👈 Esto permite hacer push en el repo
 
 on:
   workflow_dispatch:
@@ -13,15 +13,12 @@ on:
         description: "Versión"
         required: true
       file_url:
-        description: "URL del release privado (APK, ZIP, etc.)"
+        description: "URL directa del release privado"
         required: true
       platform:
         description: "Plataforma"
         required: true
         default: "Android"
-      icon_url:
-        description: "URL del ícono de la app (opcional)"
-        required: false
 
 jobs:
   publicar:
@@ -30,10 +27,10 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
     steps:
-      - name: 🧩 Checkout repo público
+      - name: 🧩 Checkout del repositorio público
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }} # 👈 importante también aquí
 
       - name: 📁 Preparar carpeta
         run: |
@@ -41,50 +38,35 @@ jobs:
           SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
           mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
 
-      - name: 📥 Descargar build privado
+      - name: 📥 Descargar build desde repo privado
         run: |
           SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' )
           SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' )
           cd "apps/$SAFE_APP/$SAFE_PLATFORM"
+
           echo "Descargando build desde: ${{ github.event.inputs.file_url }}"
           curl -L -H "Authorization: token $GH_TOKEN" \
                -o "${SAFE_APP}_${SAFE_PLATFORM}_${{ github.event.inputs.version }}.apk" \
                "${{ github.event.inputs.file_url }}"
-          echo "✅ Descargado correctamente."
 
-      - name: 🖼️ Actualizar README.md con tabla y catálogo visual
+      - name: 📝 Actualizar README con nueva app
         run: |
           APP="${{ github.event.inputs.app_name }}"
           VER="${{ github.event.inputs.version }}"
           PLATFORM="${{ github.event.inputs.platform }}"
-          ICON="${{ github.event.inputs.icon_url }}"
           SAFE_APP=$(echo "$APP" | tr ' ' '_' )
           SAFE_PLATFORM=$(echo "$PLATFORM" | tr ' ' '_' )
           FILE_PATH="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.apk"
 
-          # Tabla simple
+          LINE="| $APP | $PLATFORM | $VER | [Descargar]($FILE_PATH) |"
           if ! grep -q "$FILE_PATH" README.md; then
-            echo -e "\n## 📱 $APP v$VER\n" >> README.md
-            echo "| Plataforma | Versión | Descarga |" >> README.md
-            echo "|-----------|---------|-----------|" >> README.md
-            echo "| $PLATFORM | $VER | [📥 Descargar]($FILE_PATH) |" >> README.md
+            echo "$LINE" >> README.md
           fi
 
-          # Catálogo visual superior
-          CATALOG="<div align='center'>"
-          [ -n "$ICON" ] && CATALOG+="<img src='$ICON' width='80' />"
-          CATALOG+="<h3>$APP v$VER</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'>"
-          CATALOG+="<div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'>"
-          CATALOG+="<p>$PLATFORM</p>"
-          CATALOG+="<a href='$FILE_PATH' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a>"
-          CATALOG+="</div></div></div>\n"
-
-          echo -e "$CATALOG$(cat README.md)" > README.md
-
-      - name: 💾 Commit y push
+      - name: 💾 Commit y push de cambios
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "📦 Publicada $APP v$VER con catálogo visual"
+          git commit -m "📦 Publicada ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}"
           git push
