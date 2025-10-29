@@ -1,0 +1,151 @@
+name: 🌍 Publicar App Multiplaforma con Catálogo y Web
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: "Nombre de la app"
+        required: true
+      version:
+        description: "Versión"
+        required: true
+      android_url:
+        description: "URL del release Android"
+        required: false
+      windows_url:
+        description: "URL del release Windows"
+        required: false
+      ios_url:
+        description: "URL del release iOS"
+        required: false
+      web_url:
+        description: "URL del release Web"
+        required: false
+      icon_url:
+        description: "URL del ícono de la app (opcional)"
+        required: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+
+    steps:
+      - name: 🧩 Checkout repo público
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+
+      - name: 📦 Crear carpetas y descargar builds
+        run: |
+          APP="${{ github.event.inputs.app_name }}"
+          VER="${{ github.event.inputs.version }}"
+          SAFE_APP=$(echo "$APP" | tr ' ' '_' )
+          mkdir -p "apps/$SAFE_APP"
+
+          download() {
+            URL=$1
+            PLATFORM=$2
+            if [ -n "$URL" ]; then
+              SAFE_PLATFORM=$(echo "$PLATFORM" | tr ' ' '_' )
+              mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
+              FILE="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.zip"
+              echo "⬇️ Descargando $PLATFORM..."
+              curl -L -H "Authorization: token $GH_TOKEN" -o "$FILE" "$URL" || echo "❌ Error en $PLATFORM"
+            fi
+          }
+
+          download "${{ github.event.inputs.android_url }}" "Android"
+          download "${{ github.event.inputs.windows_url }}" "Windows"
+          download "${{ github.event.inputs.ios_url }}" "iOS"
+          download "${{ github.event.inputs.web_url }}" "Web"
+
+      - name: 📝 Generar tabla de descargas y sección visual
+        run: |
+          APP="${{ github.event.inputs.app_name }}"
+          VER="${{ github.event.inputs.version }}"
+          ICON="${{ github.event.inputs.icon_url }}"
+          SAFE_APP=$(echo "$APP" | tr ' ' '_' )
+          TEMP_TABLE="TEMP_TABLE.md"
+
+          echo "| Plataforma | Versión | Descarga |" > $TEMP_TABLE
+          echo "|-----------|---------|-----------|" >> $TEMP_TABLE
+
+          CATALOG="<div align='center'>"
+          [ -n "$ICON" ] && CATALOG+="<img src='$ICON' width='80' />"
+          CATALOG+="<h3>$APP v$VER</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'>"
+
+          for PLAT in Android Windows iOS Web; do
+            SAFE_PLATFORM=$(echo "$PLAT" | tr ' ' '_' )
+            FILE="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.zip"
+            if [ -f "$FILE" ]; then
+              echo "| $PLAT | $VER | [📥 Descargar]($FILE) |" >> $TEMP_TABLE
+              CATALOG+="<div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'>"
+              CATALOG+="<p>$PLAT</p>"
+              CATALOG+="<a href='$FILE' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a>"
+              CATALOG+="</div>"
+            fi
+          done
+          CATALOG+="</div></div>\n"
+
+          # README actualizado
+          if [ ! -f README.md ]; then
+            echo "# 🚀 Aplicaciones Oficiales de Soluciones HR" > README.md
+          fi
+
+          echo -e "$CATALOG\n$(cat README.md)" > README.md
+          cat $TEMP_TABLE >> README.md
+          rm $TEMP_TABLE
+
+      - name: 🌐 Generar index.html para GitHub Pages
+        run: |
+          APP="${{ github.event.inputs.app_name }}"
+          VER="${{ github.event.inputs.version }}"
+          ICON="${{ github.event.inputs.icon_url }}"
+          SAFE_APP=$(echo "$APP" | tr ' ' '_' )
+
+          echo "<!DOCTYPE html>
+          <html lang='es'>
+          <head>
+            <meta charset='UTF-8'>
+            <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+            <title>Aplicaciones Oficiales - Soluciones HR</title>
+            <style>
+              body { font-family: 'Segoe UI', sans-serif; background: #f7f9fc; padding: 20px; }
+              h1 { color: #0077ff; text-align:center; }
+              .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:15px; margin-top:20px; }
+              .card { background:white; border-radius:10px; padding:15px; box-shadow:0 3px 8px rgba(0,0,0,0.1); text-align:center; }
+              .card img { width:60px; margin-bottom:10px; }
+              .btn { display:inline-block; padding:5px 8px; margin-top:5px; background:#0077ff; color:white; border-radius:6px; text-decoration:none; }
+            </style>
+          </head>
+          <body>
+            <h1>🚀 Aplicaciones Oficiales de Soluciones HR</h1>
+            <div class='grid'>" > index.html
+
+          for PLAT in Android Windows iOS Web; do
+            SAFE_PLATFORM=$(echo "$PLAT" | tr ' ' '_' )
+            FILE="apps/$SAFE_APP/$SAFE_PLATFORM/${SAFE_APP}_${SAFE_PLATFORM}_${VER}.zip"
+            if [ -f "$FILE" ]; then
+              echo "<div class='card'>
+                      [ -n \"$ICON\" ] && echo \"<img src='$ICON'>\"
+                      <h3>$APP v$VER</h3>
+                      <p>$PLAT</p>
+                      <a href='$FILE' class='btn'>📥 Descargar</a>
+                    </div>" >> index.html
+            fi
+          done
+
+          echo "</div></body></html>" >> index.html
+
+      - name: 💾 Commit y push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "🌐 Publicada $APP v$VER con catálogo visual y GitHub Pages"
+          git push
