@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       app_name:
-        description: "Nombre de la app"
+        description: "Nombre de la app (ej: Mercados Cuba Mensajeros)"
         required: true
       version:
-        description: "Versión"
+        description: "Versión (ej: 1.0.5)"
         required: true
       file_url:
         description: "URL del release privado (APK, ZIP, etc.)"
         required: true
       platform:
-        description: "Plataforma"
+        description: "Plataforma (ej: Android)"
         required: true
         default: "Android"
       icon_url:
@@ -39,50 +39,47 @@ jobs:
           SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
           mkdir -p "apps/$SAFE_APP/$SAFE_PLATFORM"
 
-     - name: 📥 Descargar build privado
-       env:
-         PRIVATE_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
-         FILE_URL: ${{ github.event.inputs.file_url }}
-       run: |
-         SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-         SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
-         VER="${{ github.event.inputs.version }}"
-         cd "apps/$SAFE_APP/$SAFE_PLATFORM"
-    
-         # Validación básica de URL
-         if [[ ! "$FILE_URL" =~ ^https://github.com/.*releases/download/.* ]]; then
-           echo "❌ URL inválida: Debe ser un link directo de GitHub Release (ej: https://github.com/.../releases/download/v1.0.5/app.apk)"
-           exit 1
-         fi
-    
-         # Extraer nombre base y extensión
-         FILENAME=$(basename "$FILE_URL")
-         EXT="${FILENAME##*.}"
-         OUTPUT_FILE="${SAFE_APP}_${SAFE_PLATFORM}_${VER}.${EXT}"
-    
-         echo "Descargando desde: $FILE_URL"
-         echo "Guardando como: $OUTPUT_FILE"
-    
-         curl -L -v -H "Authorization: token $PRIVATE_TOKEN" \  # -v para logs detallados en debug
-           --fail \
-           -o "$OUTPUT_FILE" \
-           "$FILE_URL"
-    
-        if [ $? -ne 0 ]; then
-          echo "❌ Error en descarga (ver logs arriba). Posibles causas:"
-          echo "  - URL malformada (chequea tag y asset name)."
-          echo "  - Release no existe o asset no subido."
-          echo "  - Token sin acceso al repo privado."
-          exit 1
-        fi
-    
-        FILE_SIZE=$(stat -c%s "$OUTPUT_FILE")
-        if [ "$FILE_SIZE" -eq 0 ]; then
-          echo "❌ Archivo vacío. Verifica el asset en el release."
-          exit 1
-        fi
-    
-        echo "✅ Descargado: $OUTPUT_FILE ($((FILE_SIZE / 1024 / 1024)) MB)"
+      - name: 📥 Descargar build privado
+        env:
+          PRIVATE_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          FILE_URL: ${{ github.event.inputs.file_url }}
+        run: |
+          SAFE_APP=$(echo "${{ github.event.inputs.app_name }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
+          SAFE_PLATFORM=$(echo "${{ github.event.inputs.platform }}" | tr ' ' '_' | tr '[:upper:]' '[:lower:]')
+          VER="${{ github.event.inputs.version }}"
+          cd "apps/$SAFE_APP/$SAFE_PLATFORM"
+          
+          # Validación básica de URL
+          if [[ ! "$FILE_URL" =~ ^https://github.com/.*releases/download/.* ]]; then
+            echo "❌ URL inválida: Debe ser un link directo de GitHub Release (ej: https://github.com/.../releases/download/v1.0.5/app.apk)"
+            exit 1
+          fi
+          
+          # Extraer nombre base y extensión de file_url
+          FILENAME=$(basename "$FILE_URL")
+          EXT="${FILENAME##*.}"
+          OUTPUT_FILE="${SAFE_APP}_${SAFE_PLATFORM}_${VER}.${EXT}"
+          
+          echo "Descargando desde: $FILE_URL"
+          echo "Guardando como: $OUTPUT_FILE"
+          
+          curl -L -H "Authorization: token $PRIVATE_TOKEN" \
+               --fail \
+               -o "$OUTPUT_FILE" \
+               "$FILE_URL"
+          
+          if [ $? -ne 0 ]; then
+            echo "❌ Error en descarga: Verifica URL y token."
+            exit 1
+          fi
+          
+          FILE_SIZE=$(stat -c%s "$OUTPUT_FILE")
+          if [ "$FILE_SIZE" -eq 0 ]; then
+            echo "❌ Archivo descargado vacío. Verifica el release."
+            exit 1
+          fi
+          
+          echo "✅ Descargado: $OUTPUT_FILE ($((FILE_SIZE / 1024 / 1024)) MB)"
 
       - name: 🖼️ Actualizar README.md con tabla y catálogo visual
         run: |
@@ -122,6 +119,10 @@ jobs:
           echo "README actualizado con $FILE_PATH"
 
       - name: 💾 Commit y push
+        env:
+          APP: "${{ github.event.inputs.app_name }}"
+          VER: "${{ github.event.inputs.version }}"
+          PLATFORM: "${{ github.event.inputs.platform }}"
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
