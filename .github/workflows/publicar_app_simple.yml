@@ -13,8 +13,8 @@ on:
         required: true
         type: string
         default: 'v1.0.0'
-      private_repo_url:
-        description: 'URL del repositorio privado (ej: https://github.com/usuario/repo-privado)'
+      private_release_url:
+        description: 'URL del release privado (ej: https://github.com/usuario/repo/releases/tag/v1.0.0)'
         required: true
         type: string
       public_repo_url:
@@ -41,19 +41,37 @@ jobs:
           echo "📋 Configuración del workflow:"
           echo "App: ${{ github.event.inputs.app_name }}"
           echo "Versión: ${{ github.event.inputs.version }}"
+          echo "Release privada: ${{ github.event.inputs.private_release_url }}"
           echo "Repo público: ${{ github.event.inputs.public_repo_url }}"
           echo "Plataformas: ${{ github.event.inputs.platforms }}"
+
+      - name: Extract private repo and tag from release URL
+        id: extract_private_repo
+        run: |
+          URL="${{ github.event.inputs.private_release_url }}"
           
-          # Validar que la versión comience con 'v'
-          if [[ ! "${{ github.event.inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "❌ Error: La versión debe estar en formato v1.0.0"
+          # Validar que sea una URL de GitHub
+          if [[ ! "$URL" =~ github.com ]]; then
+            echo "❌ Error: La URL debe ser de GitHub"
             exit 1
           fi
-
-      - name: Checkout private repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+          
+          # Extraer usuario/repo de la URL
+          # Ej: https://github.com/usuario/repo/releases/tag/v1.0.0
+          REPO=$(echo "$URL" | sed 's|.*github.com/||' | sed 's|/releases.*||' | sed 's|\.git$||')
+          
+          # Extraer el tag de la URL
+          TAG=$(echo "$URL" | grep -oP '(?<=/tag/)[^/]+' || echo "")
+          
+          if [ -z "$TAG" ]; then
+            echo "❌ Error: No se pudo extraer el tag de la URL"
+            exit 1
+          fi
+          
+          echo "repo=$REPO" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "✅ Repositorio privado: $REPO"
+          echo "✅ Tag: $TAG"
 
       - name: Create release assets directory
         run: |
@@ -77,9 +95,11 @@ jobs:
           
           echo "✅ Release encontrado: $RELEASE_ID"
           
-          # Descargar los assets
+          PRIVATE_REPO="${{ steps.extract_private_repo.outputs.repo }}"
+          
+          # Descargar los assets del repo privado
           gh release download "${{ github.event.inputs.version }}" \
-            --repo "${{ github.repository }}" \
+            --repo "$PRIVATE_REPO" \
             --dir release-assets
           
           echo "📥 Assets descargados:"
@@ -180,6 +200,7 @@ jobs:
 
       - name: Upload to public repo
         env:
+          PRIVATE_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
           PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
           if [ -z "$PUBLIC_REPO_TOKEN" ]; then
@@ -188,6 +209,16 @@ jobs:
             exit 1
           fi
           
+          if [ -z "$PRIVATE_REPO_TOKEN" ]; then
+            echo "⚠️  PRIVATE_REPO_TOKEN no configurado, usando GITHUB_TOKEN"
+            export PRIVATE_REPO_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+          fi
+          
+          # Usar el token privado para descargar
+          export GITHUB_TOKEN="$PRIVATE_REPO_TOKEN"
+          
+          PRIVATE_REPO="${{ steps.extract_private_repo.outputs.repo }}"
+          TAG="${{ steps.extract_private_repo.outputs.tag }}"
           PUBLIC_REPO="${{ steps.extract_repo.outputs.repo }}"
           VERSION="${{ github.event.inputs.version }}"
           APP_NAME="${{ github.event.inputs.app_name }}"
@@ -229,7 +260,8 @@ jobs:
           echo ""
           echo "📦 **Aplicación**: ${{ github.event.inputs.app_name }}"
           echo "📌 **Versión**: ${{ github.event.inputs.version }}"
-          echo "🔗 **Repositorio**: ${{ github.event.inputs.public_repo_url }}"
+          echo "🔐 **Release Privada**: ${{ github.event.inputs.private_release_url }}"
+          echo "🔗 **Repositorio Público**: ${{ github.event.inputs.public_repo_url }}"
           echo "🎯 **Plataformas**: ${{ github.event.inputs.platforms }}"
           echo ""
           echo "Los archivos han sido renombrados y subidos al repositorio público."
