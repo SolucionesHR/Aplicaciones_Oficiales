@@ -5,27 +5,131 @@
   <meta name='viewport' content='width=device-width, initial-scale=1.0'>
   <title>Aplicaciones Oficiales - Soluciones HR</title>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f7f9fc; padding: 20px; }
-    h1 { color: #0077ff; text-align:center; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap:15px; margin-top:20px; }
-    .card { background:white; border-radius:10px; padding:15px; box-shadow:0 3px 8px rgba(0,0,0,0.1); text-align:center; }
-    .card img { width:60px; margin-bottom:10px; }
-    .btn { display:inline-block; padding:5px 8px; margin-top:5px; background:#0077ff; color:white; border-radius:6px; text-decoration:none; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f9fc; padding: 20px; line-height: 1.6; }
+    h1 { color: #0077ff; text-align: center; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header img { width: 120px; margin-bottom: 10px; }
+    .description { text-align: center; max-width: 800px; margin: 0 auto 20px; }
+    .contact-badge { display: inline-block; margin: 10px; }
+    .section { margin: 40px 0; }
+    .section h2 { color: #0077ff; text-align: center; }
+    .section h3 { color: #0077ff; text-align: center; margin-bottom: 15px; }
+    .apps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+    .app-card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 3px 8px rgba(0,0,0,0.1); text-align: center; }
+    .downloads { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .download-item { border: 1px solid #ddd; padding: 10px; border-radius: 8px; text-align: center; width: 120px; }
+    .download-item p { margin: 0 0 10px; }
+    .btn { display: inline-block; padding: 5px 8px; background: #0077ff; color: white; border-radius: 6px; text-decoration: none; }
+    .about, .values, .contact { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
+    .values ul { list-style: none; padding: 0; }
+    .values li { margin: 10px 0; padding-left: 20px; position: relative; }
+    .values li:before { content: '🌟'; position: absolute; left: 0; }
+    .contact-links { text-align: center; }
+    .footer { text-align: center; margin-top: 40px; color: #666; font-size: 0.9em; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 30px 0; }
   </style>
 </head>
 <body>
-  <h1>🚀 Aplicaciones Oficiales de Soluciones HR</h1>
-  <div class='grid'>
-<div class='card'>
-            [ -n "" ] && echo "<img src=''>"
-            <h3>Mimosa Admin v1.5.8</h3>
+  <div class='header'>
+    <img src="https://raw.githubusercontent.com/SolucionesHR/Aplicaciones_Oficiales/main/assets/logo_solucioneshr.png" alt="Soluciones HR" width="120" />
+    <h1>🚀 Aplicaciones Oficiales de <strong>Soluciones HR</strong></h1>
+    <p class='description'>
+      Desarrollamos tecnología inteligente para conectar personas, automatizar procesos y potenciar negocios.  
+      Aquí encontrarás las versiones más recientes de nuestras apps móviles y de escritorio.
+    </p>
+    <a href="mailto:solucioneshr.soft@gmail.com" class='contact-badge'>
+      <img src="https://img.shields.io/badge/📧%20Contáctanos-solucioneshr.soft@gmail.com-green?style=for-the-badge" alt="Contact Badge">
+    </a>
+  </div>
+
+  <hr>
+
+  <div class='section'>
+    <h2>📱 Aplicaciones disponibles</h2>
+    <p style='text-align: center; max-width: 800px; margin: 0 auto 30px;'>
+      Estas son las aplicaciones desarrolladas y mantenidas por <strong>Soluciones HR</strong>.  
+      Todas las versiones se generan automáticamente desde nuestros repositorios privados y se publican aquí para descarga directa.
+    </p>
+
+    <div class='apps-grid'>
+      <div class='app-card'>
+        <h3>Mimosa Admin v1.5.8</h3>
+        <div class='downloads'>
+          <div class='download-item'>
             <p>Android</p>
             <a href='apps/Mimosa_Admin/Android/Mimosa_Admin_Android_1.5.8.zip' class='btn'>📥 Descargar</a>
           </div>
-<div class='card'>
-            [ -n "" ] && echo "<img src=''>"
-            <h3>Mimosa Admin v1.5.8</h3>
+          <div class='download-item'>
             <p>Windows</p>
             <a href='apps/Mimosa_Admin/Windows/Mimosa_Admin_Windows_1.5.8.zip' class='btn'>📥 Descargar</a>
           </div>
-</div></body></html>
+        </div>
+      </div>
+
+      <div class='app-card'>
+        <h3>Mimosa Mensajeros v1.0.5</h3>
+        <div class='downloads'>
+          <div class='download-item'>
+            <p>Android</p>
+            <a href='apps/Mimosa_Mensajeros/Android/Mimosa_Mensajeros_Android_1.0.5.apk' class='btn'>📥 Descargar</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class='section'>
+    <div class='about'>
+      <h2>🧠 ¿Quiénes somos?</h2>
+      <p>
+        <strong>Soluciones HR</strong> es una empresa de tecnología especializada en:
+      </p>
+      <ul>
+        <li>🤖 Desarrollo de <strong>Agentes Conversacionales e Inteligencia Artificial</strong></li>
+        <li>📲 Aplicaciones <strong>Flutter</strong> multiplataforma</li>
+        <li>📲 Aplicaciones <strong>Kotlin</strong> android</li>
+        <li>☁️ Integraciones con <strong>Supabase</strong>, <strong>Ollama</strong>, <strong>OpenAI</strong> y <strong>Meta APIs</strong></li>
+        <li>🔐 Soluciones empresariales personalizadas y seguras</li>
+      </ul>
+      <blockquote>
+        Nuestra misión es transformar ideas en soluciones digitales reales.
+      </blockquote>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='values'>
+      <h2>🌟 Valores que nos diferencian</h2>
+      <ul>
+        <li><strong>Innovación constante:</strong> adoptamos las tecnologías más recientes.</li>
+        <li><strong>Eficiencia y automatización:</strong> hacemos que tu negocio trabaje para ti.</li>
+        <li><strong>Diseño centrado en el usuario:</strong> cada app está pensada para ser simple, moderna y funcional.</li>
+        <li><strong>Privacidad y seguridad:</strong> protegemos tus datos y los de tus clientes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class='section'>
+    <div class='contact'>
+      <h2>💬 Contáctanos</h2>
+      <p>¿Quieres una app personalizada para tu negocio?  
+      Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.</p>
+      <div class='contact-links'>
+        <p>
+          📞 WhatsApp: <a href="https://wa.me/5354500501">+53 54500501</a><br>
+          📧 Correo: <a href="mailto:solucioneshr.soft@gmail.com">solucioneshr.soft@gmail.com</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class='footer'>
+    <div align="center">
+      <p>### 💙 <em>Soluciones HR — Tecnología que impulsa tu futuro.</em></p>
+      © 2025 Soluciones HR. Todos los derechos reservados.
+    </div>
+  </div>
+</body>
+</html>
