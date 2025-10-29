@@ -1,4 +1,3 @@
-## 📱 Catálogo de MimosaAdmin
 <div align="center">
   <img src="https://raw.githubusercontent.com/SolucionesHR/Aplicaciones_Oficiales/main/assets/logo_solucioneshr.png" alt="Soluciones HR" width="120" />
 
