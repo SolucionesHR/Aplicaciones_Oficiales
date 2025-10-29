@@ -1,3 +1,9 @@
+## 📱 Catálogo de Mimosa Mensajeros
+
+<div style='display:flex;flex-wrap:wrap;gap:10px;'>
+</div>
+
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/SolucionesHR/Aplicaciones_Oficiales/main/assets/logo_solucioneshr.png" alt="Soluciones HR" width="120" />
 
@@ -9,7 +15,6 @@
   </p>
 
   <a href="mailto:solucioneshr.soft@gmail.com"><img src="https://img.shields.io/badge/📧%20Contáctanos-solucioneshr.soft@gmail.com-green?style=for-the-badge"></a>
-</div>
 
 ---
 
@@ -19,9 +24,7 @@ Estas son las aplicaciones desarrolladas y mantenidas por **Soluciones HR**.
 Todas las versiones se generan automáticamente desde nuestros repositorios privados y se publican aquí para descarga directa.
 
 
-<div align='center'><h3>Mimosa Admin v1.5.8</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'><div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'><p>Android</p><a href='apps/Mimosa_Admin/Android/Mimosa_Admin_Android_1.5.8.zip' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a></div><div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'><p>Windows</p><a href='apps/Mimosa_Admin/Windows/Mimosa_Admin_Windows_1.5.8.zip' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a></div></div></div>
 
-<div align='center'><h3>Mimosa Mensajeros v1.0.5</h3><div style='display:flex;gap:10px;justify-content:center;flex-wrap:wrap;'><div style='border:1px solid #ddd;padding:10px;border-radius:8px;text-align:center;width:120px;'><p>Android</p><a href='apps/Mimosa_Mensajeros/Android/Mimosa_Mensajeros_Android_1.0.5.apk' style='background:#0077ff;color:white;padding:5px 8px;border-radius:6px;text-decoration:none;'>📥 Descargar</a></div></div></div>
 
 ---
 
@@ -64,4 +67,3 @@ Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.
 
 © 2025 Soluciones HR. Todos los derechos reservados.
 
-</div>
