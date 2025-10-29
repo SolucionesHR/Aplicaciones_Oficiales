@@ -1,52 +1,48 @@
-name: 🧪 Debug Private Download (GH CLI)
+name: 🧪 Debug Private Download
 
 on:
   workflow_dispatch:
     inputs:
-      repo:
-        description: "Repositorio privado (formato: owner/repo)"
+      repo_url:
+        description: "URL del archivo en el repositorio privado (release asset)"
         required: true
-        default: "SolucionesHR/mercados_cuba_delivery"
-      tag:
-        description: "Tag o versión del release"
+        default: "https://github.com/SolucionesHR/mercados_cuba_delivery/releases/download/v1.0.5/mensajero.apk"
+      output_name:
+        description: "Nombre del archivo de salida"
         required: true
-        default: "v1.0.5"
-      pattern:
-        description: "Patrón del nombre del archivo a descargar (puede ser *.apk)"
-        required: true
-        default: "mensajero.apk"
+        default: "test.apk"
 
 jobs:
-  debug-gh-download:
+  debug-download:
     runs-on: ubuntu-latest
 
     steps:
       - name: 🏁 Iniciar flujo
-        run: echo "🔍 Iniciando descarga privada con gh release download..."
+        run: echo "🔍 Iniciando descarga privada desde GitHub Release..."
 
-      - name: 🔑 Configurar GH CLI
+      - name: 🔑 Configurar token
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
-          echo "✅ Autenticando GH CLI con token..."
-          echo "$GH_TOKEN" | gh auth login --with-token
-          echo "👤 Usuario autenticado:"
-          gh auth status
+          echo "Últimos 4 caracteres del token: ${GH_TOKEN: -4}"
+          echo "Verificando conexión con GitHub API..."
+          curl -s -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/user | jq '.login'
 
-      - name: 📦 Descargar asset desde release privado
+      - name: 🧪 Debug download with verbose curl
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
-          echo "📥 Descargando desde ${{ github.event.inputs.repo }} - tag ${{ github.event.inputs.tag }}"
-          gh release download \
-            ${{ github.event.inputs.tag }} \
-            --repo "${{ github.event.inputs.repo }}" \
-            --pattern "${{ github.event.inputs.pattern }}" \
-            --verbose
+          echo "Intentando descargar archivo desde:"
+          echo "${{ github.event.inputs.repo_url }}"
+          curl -v \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            -L "${{ github.event.inputs.repo_url }}" \
+            -o "${{ github.event.inputs.output_name }}"
 
-      - name: 🧾 Verificar archivo descargado
+      - name: 📦 Verificar archivo descargado
         run: |
-          echo "📂 Archivos descargados:"
+          echo "Listando archivos en el directorio actual..."
           ls -lh
-          echo "🔍 Información detallada:"
-          file "${{ github.event.inputs.pattern }}"
+          echo "Detalles del archivo descargado:"
+          file "${{ github.event.inputs.output_name }}"
