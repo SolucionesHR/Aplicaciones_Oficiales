@@ -1,23 +1,4 @@
 ## 📱 Catálogo de MimosaAdmin
-
-<div style='display:flex;flex-wrap:wrap;gap:10px;'>
-<div style='border:1px solid #ddd;border-radius:10px;padding:10px;width:200px;text-align:center;'>
-    <div style='font-size:2em;'>📦</div>
-    <strong>MimosaAdmin</strong><br/>
-    <em> Windows</em><br/>
-    <a href='apps/MimosaAdmin/ Windows/MimosaAdmin_ Windows_1.5.8.zip' style='display:inline-block;margin-top:5px;padding:5px 10px;background:#28a745;color:#fff;border-radius:5px;text-decoration:none;'>Descargar v1.5.8</a>
-  </div>
-<div style='border:1px solid #ddd;border-radius:10px;padding:10px;width:200px;text-align:center;'>
-    <div style='font-size:2em;'>🤖</div>
-    <strong>MimosaAdmin</strong><br/>
-    <em>Android</em><br/>
-    <a href='apps/MimosaAdmin/Android/MimosaAdmin_Android_1.5.8.apk' style='display:inline-block;margin-top:5px;padding:5px 10px;background:#28a745;color:#fff;border-radius:5px;text-decoration:none;'>Descargar v1.5.8</a>
-  </div>
-</div>
-
-
-
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/SolucionesHR/Aplicaciones_Oficiales/main/assets/logo_solucioneshr.png" alt="Soluciones HR" width="120" />
 
@@ -29,16 +10,6 @@
   </p>
 
   <a href="mailto:solucioneshr.soft@gmail.com"><img src="https://img.shields.io/badge/📧%20Contáctanos-solucioneshr.soft@gmail.com-green?style=for-the-badge"></a>
-
----
-
-## 📱 Aplicaciones disponibles
-
-Estas son las aplicaciones desarrolladas y mantenidas por **Soluciones HR**.  
-Todas las versiones se generan automáticamente desde nuestros repositorios privados y se publican aquí para descarga directa.
-
-
-
 
 ---
 
