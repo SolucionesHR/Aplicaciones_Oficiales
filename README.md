@@ -1,7 +1,21 @@
-## 📱 Catálogo de Mimosa Mensajeros
+## 📱 Catálogo de MimosaAdmin
 
 <div style='display:flex;flex-wrap:wrap;gap:10px;'>
+<div style='border:1px solid #ddd;border-radius:10px;padding:10px;width:200px;text-align:center;'>
+    <div style='font-size:2em;'>📦</div>
+    <strong>MimosaAdmin</strong><br/>
+    <em> Windows</em><br/>
+    <a href='apps/MimosaAdmin/ Windows/MimosaAdmin_ Windows_1.5.8.zip' style='display:inline-block;margin-top:5px;padding:5px 10px;background:#28a745;color:#fff;border-radius:5px;text-decoration:none;'>Descargar v1.5.8</a>
+  </div>
+<div style='border:1px solid #ddd;border-radius:10px;padding:10px;width:200px;text-align:center;'>
+    <div style='font-size:2em;'>🤖</div>
+    <strong>MimosaAdmin</strong><br/>
+    <em>Android</em><br/>
+    <a href='apps/MimosaAdmin/Android/MimosaAdmin_Android_1.5.8.apk' style='display:inline-block;margin-top:5px;padding:5px 10px;background:#28a745;color:#fff;border-radius:5px;text-decoration:none;'>Descargar v1.5.8</a>
+  </div>
 </div>
+
+
 
 
 <div align="center">
