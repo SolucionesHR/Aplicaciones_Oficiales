@@ -51,7 +51,7 @@ Todas las versiones se generan automáticamente desde nuestros repositorios priv
 Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.
 
 📞 WhatsApp: [+53 54500501](https://wa.me/5354500501)
-📧 Correo: [contacto@solucioneshr.com](mailto:solucioneshr.soft@gmail.com)
+📧 Correo: [solucioneshr.soft@gmail.com](mailto:solucioneshr.soft@gmail.com)
 
 ---
 
