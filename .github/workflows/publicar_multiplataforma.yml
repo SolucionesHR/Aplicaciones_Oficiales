@@ -21,7 +21,7 @@ on:
         description: "Lista de archivos en formato: plataforma=archivo (separados por comas, ej: Android=mensajero.apk,Windows=setup.exe)"
         required: true
       gdrive_folder_id:
-        description: "ID de carpeta pública de Google Drive (dejar vacío para omitir)"
+        description: "URL o ID de almacenamiento externo (Drive/Dropbox/Release - dejar vacío para omitir)"
         required: false
 
 jobs:
@@ -78,35 +78,62 @@ jobs:
             fi
           done
 
-      - name: ☁️ Subir a Google Drive (opcional)
+      - name: ☁️ Subir a almacenamiento externo (opcional)
         if: ${{ github.event.inputs.gdrive_folder_id != '' }}
         env:
-          GDRIVE_FOLDER_ID: ${{ github.event.inputs.gdrive_folder_id }}
-          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          STORAGE_ENDPOINT: ${{ github.event.inputs.gdrive_folder_id }}
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
         run: |
           set -e
           
-          # Instalar gdrive CLI
-          wget -O gdrive "https://github.com/glotlabs/gdrive/releases/download/3.9.1/gdrive_linux-x64"
-          chmod +x gdrive
-          sudo mv gdrive /usr/local/bin/
-          
-          # Configurar credenciales
-          mkdir -p ~/.gdrive
-          echo "$GDRIVE_CREDENTIALS" > ~/.gdrive/credentials.json
-          
-          # Subir archivos
-          find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
-            echo "☁️ Subiendo $FILE a Google Drive..."
+          # Opción 1: Si tienes RCLONE_CONFIG configurado (soporta múltiples servicios)
+          if [ ! -z "$RCLONE_CONFIG" ]; then
+            echo "📦 Instalando rclone..."
+            curl https://rclone.org/install.sh | sudo bash
             
-            if gdrive files upload "$FILE" --parent "$GDRIVE_FOLDER_ID" --share; then
-              GDRIVE_LINK=$(gdrive files list --parent "$GDRIVE_FOLDER_ID" --query "name contains '$(basename "$FILE")'" | tail -1 | awk '{print $1}')
-              echo "GDRIVE_LINK_$(basename "$FILE")=https://drive.google.com/file/d/${GDRIVE_LINK}/view?usp=sharing" >> $GITHUB_ENV
-              echo "✅ Subido: $FILE"
-            else
-              echo "⚠️ No se pudo subir $FILE a Google Drive"
-            fi
-          done
+            # Crear config de rclone
+            mkdir -p ~/.config/rclone
+            echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
+            
+            # Subir archivos (funciona con Drive, Dropbox, OneDrive, etc.)
+            find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
+              echo "☁️ Subiendo $FILE..."
+              if rclone copy "$FILE" "remote:$STORAGE_ENDPOINT" --progress; then
+                echo "✅ Subido: $FILE"
+                # Generar link público (ajustar según servicio)
+                FILENAME=$(basename "$FILE")
+                echo "STORAGE_LINK_$FILENAME=$STORAGE_ENDPOINT/$FILENAME" >> $GITHUB_ENV
+              else
+                echo "⚠️ Error al subir $FILE"
+              fi
+            done
+          
+          # Opción 2: Usar GitHub Releases como almacenamiento alternativo
+          else
+            echo "📦 Usando GitHub Releases como almacenamiento..."
+            RELEASE_TAG="storage-${{ github.event.inputs.app_name }}-${{ github.event.inputs.version }}"
+            
+            # Crear release si no existe
+            gh release create "$RELEASE_TAG" \
+              --title "📦 ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}" \
+              --notes "Archivos de distribución" \
+              --repo ${{ github.repository }} 2>/dev/null || true
+            
+            # Subir archivos al release
+            find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
+              echo "📤 Subiendo $FILE a GitHub Release..."
+              if gh release upload "$RELEASE_TAG" "$FILE" --clobber --repo ${{ github.repository }}; then
+                echo "✅ Subido a Release: $FILE"
+                FILENAME=$(basename "$FILE")
+                RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$FILENAME"
+                echo "STORAGE_LINK_$FILENAME=$RELEASE_URL" >> $GITHUB_ENV
+              else
+                echo "⚠️ Error al subir $FILE"
+              fi
+            done
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
       - name: 🖼️ Generar catálogo visual en README
         run: |
@@ -144,15 +171,15 @@ jobs:
             # Link de GitHub
             GITHUB_LINK="[$FILENAME]($FILE)"
             
-            # Link de Google Drive si existe
-            GDRIVE_VAR="GDRIVE_LINK_$FILENAME"
-            if [ ! -z "${!GDRIVE_VAR}" ]; then
-              GDRIVE_LINK=" • [☁️ Drive](${!GDRIVE_VAR})"
+            # Link de almacenamiento externo si existe
+            STORAGE_VAR="STORAGE_LINK_$FILENAME"
+            if [ ! -z "${!STORAGE_VAR}" ]; then
+              STORAGE_LINK=" • [☁️ Mirror](${!STORAGE_VAR})"
             else
-              GDRIVE_LINK=""
+              STORAGE_LINK=""
             fi
             
-            echo "| $ICON | v$VER | ${SIZE_MB} MB | $GITHUB_LINK$GDRIVE_LINK |" >> CATALOG.md
+            echo "| $ICON | v$VER | ${SIZE_MB} MB | $GITHUB_LINK$STORAGE_LINK |" >> CATALOG.md
           done
           
           echo "" >> CATALOG.md
