@@ -132,8 +132,6 @@ jobs:
               fi
             done
           fi
-        env:
-          GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
 
       - name: 🖼️ Generar catálogo visual en README
         run: |
