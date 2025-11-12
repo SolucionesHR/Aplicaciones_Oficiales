@@ -51,3 +51,12 @@ Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.
 
 © 2025 Soluciones HR. Todos los derechos reservados.
 
+## 📱 Catálogo de Bukenque
+
+| Plataforma | Versión | Tamaño | Descargas |
+|------------|---------|--------|-----------|
+| 🤖 Android | v2.2.5 | 105.29 MB | [Bukenque_Android_2.2.5.apk](apps/Bukenque/Android/Bukenque_Android_2.2.5.apk) |
+| 💻 Windows | v2.2.5 | 13.04 MB | [Bukenque_Windows_2.2.5.zip](apps/Bukenque/Windows/Bukenque_Windows_2.2.5.zip) |
+
+_Última actualización: 2025-11-12 12:56 UTC_
+
