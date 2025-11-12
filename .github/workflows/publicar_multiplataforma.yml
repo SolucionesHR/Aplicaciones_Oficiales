@@ -20,12 +20,6 @@ on:
       assets:
         description: "Lista de archivos en formato: plataforma=archivo (separados por comas, ej: Android=mensajero.apk,Windows=setup.exe)"
         required: true
-      remote_upload_path:
-        description: "Ruta remota para upload (ej: /var/www/apps - dejar vacío para omitir)"
-        required: false
-      remote_base_url:
-        description: "URL base pública del servidor (ej: https://cdn.midominio.com/apps - dejar vacío para omitir)"
-        required: false
 
 jobs:
   publish-multi:
