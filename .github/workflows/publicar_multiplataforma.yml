@@ -20,83 +20,208 @@ on:
       assets:
         description: "Lista de archivos en formato: plataforma=archivo (separados por comas, ej: Android=mensajero.apk,Windows=setup.exe)"
         required: true
+      gdrive_folder_id:
+        description: "ID de carpeta pública de Google Drive (dejar vacío para omitir)"
+        required: false
 
 jobs:
   publish-multi:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
+    
     steps:
       - name: 📂 Checkout repositorio público
         uses: actions/checkout@v4
+        with:
+          lfs: true  # Habilitar Git LFS
 
-      - name: 📥 Descargar todos los assets desde release privado
+      - name: 🔧 Configurar Git LFS
+        run: |
+          git lfs install
+          git lfs track "*.apk" "*.ipa" "*.zip" "*.exe" "*.dmg"
+          git add .gitattributes
+
+      - name: 📥 Descargar assets desde release privado
         env:
           GH_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}
         run: |
+          set -e  # Salir si hay error
+          
           IFS=',' read -ra ITEMS <<< "${{ github.event.inputs.assets }}"
+          
           for PAIR in "${ITEMS[@]}"; do
             PLATFORM="${PAIR%%=*}"
             ASSET="${PAIR#*=}"
             EXT="${ASSET##*.}"
             DEST="apps/${{ github.event.inputs.app_name }}/${PLATFORM}/${{ github.event.inputs.app_name }}_${PLATFORM}_${{ github.event.inputs.version }}.${EXT}"
-
+            
             echo "📦 Descargando $ASSET para $PLATFORM..."
             mkdir -p "$(dirname "$DEST")"
-            gh release download "${{ github.event.inputs.tag }}" \
+            
+            if ! gh release download "${{ github.event.inputs.tag }}" \
               --repo "${{ github.event.inputs.private_repo }}" \
               --pattern "$ASSET" \
               -O "$DEST" \
-              --clobber
+              --clobber; then
+              echo "❌ Error al descargar $ASSET"
+              exit 1
+            fi
+            
+            # Verificar tamaño del archivo
+            SIZE=$(stat -f%z "$DEST" 2>/dev/null || stat -c%s "$DEST" 2>/dev/null)
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            echo "📊 Tamaño de $ASSET: ${SIZE_MB} MB"
+            
+            if [ $SIZE_MB -gt 95 ]; then
+              echo "⚠️ Archivo grande detectado, se usará Git LFS automáticamente"
+            fi
+          done
+
+      - name: ☁️ Subir a Google Drive (opcional)
+        if: ${{ github.event.inputs.gdrive_folder_id != '' }}
+        env:
+          GDRIVE_FOLDER_ID: ${{ github.event.inputs.gdrive_folder_id }}
+          GDRIVE_CREDENTIALS: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -e
+          
+          # Instalar gdrive CLI
+          wget -O gdrive "https://github.com/glotlabs/gdrive/releases/download/3.9.1/gdrive_linux-x64"
+          chmod +x gdrive
+          sudo mv gdrive /usr/local/bin/
+          
+          # Configurar credenciales
+          mkdir -p ~/.gdrive
+          echo "$GDRIVE_CREDENTIALS" > ~/.gdrive/credentials.json
+          
+          # Subir archivos
+          find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
+            echo "☁️ Subiendo $FILE a Google Drive..."
+            
+            if gdrive files upload "$FILE" --parent "$GDRIVE_FOLDER_ID" --share; then
+              GDRIVE_LINK=$(gdrive files list --parent "$GDRIVE_FOLDER_ID" --query "name contains '$(basename "$FILE")'" | tail -1 | awk '{print $1}')
+              echo "GDRIVE_LINK_$(basename "$FILE")=https://drive.google.com/file/d/${GDRIVE_LINK}/view?usp=sharing" >> $GITHUB_ENV
+              echo "✅ Subido: $FILE"
+            else
+              echo "⚠️ No se pudo subir $FILE a Google Drive"
+            fi
           done
 
       - name: 🖼️ Generar catálogo visual en README
         run: |
+          set -e
+          
           APP="${{ github.event.inputs.app_name }}"
           VER="${{ github.event.inputs.version }}"
+          
+          echo "🧩 Generando catálogo visual..."
+          
+          # Crear catálogo en Markdown
+          cat > CATALOG.md << 'CATALOG_START'
+          ## 📱 Catálogo de ${{ github.event.inputs.app_name }}
 
-          echo "🧩 Generando catálogo visual para GitHub..."
-
-          CAT_HEADER="## 📱 Catálogo de ${APP}\n\n<div style='display:flex;flex-wrap:wrap;gap:10px;'>"
-          CAT_FOOTER="</div>\n\n"
-
-          echo -e "$CAT_HEADER" > CATALOG.md
-
-          find apps/$APP -type f | while read -r FILE; do
+          | Plataforma | Versión | Tamaño | Descargas |
+          |------------|---------|--------|-----------|
+          CATALOG_START
+          
+          # Agregar filas por plataforma
+          find apps/$APP -type f | sort | while read -r FILE; do
             PLAT=$(echo "$FILE" | cut -d'/' -f3)
-            EXT="${FILE##*.}"
-
-            ICON=""
+            FILENAME=$(basename "$FILE")
+            SIZE=$(stat -f%z "$FILE" 2>/dev/null || stat -c%s "$FILE" 2>/dev/null)
+            SIZE_MB=$(echo "scale=2; $SIZE / 1024 / 1024" | bc)
+            
+            # Icono según plataforma
             case "$PLAT" in
-              Android) ICON="🤖";;
-              Windows) ICON="💻";;
-              iOS) ICON="🍎";;
-              Web) ICON="🌐";;
-              *) ICON="📦";;
+              Android) ICON="🤖 Android";;
+              Windows) ICON="💻 Windows";;
+              iOS) ICON="🍎 iOS";;
+              Web) ICON="🌐 Web";;
+              *) ICON="📦 $PLAT";;
             esac
-
-            echo "<div style='border:1px solid #ddd;border-radius:10px;padding:10px;width:200px;text-align:center;'>
-              <div style='font-size:2em;'>$ICON</div>
-              <strong>${APP}</strong><br/>
-              <em>$PLAT</em><br/>
-              <a href='$FILE' style='display:inline-block;margin-top:5px;padding:5px 10px;background:#28a745;color:#fff;border-radius:5px;text-decoration:none;'>Descargar v${VER}</a>
-            </div>" >> CATALOG.md
+            
+            # Link de GitHub
+            GITHUB_LINK="[$FILENAME]($FILE)"
+            
+            # Link de Google Drive si existe
+            GDRIVE_VAR="GDRIVE_LINK_$FILENAME"
+            if [ ! -z "${!GDRIVE_VAR}" ]; then
+              GDRIVE_LINK=" • [☁️ Drive](${!GDRIVE_VAR})"
+            else
+              GDRIVE_LINK=""
+            fi
+            
+            echo "| $ICON | v$VER | ${SIZE_MB} MB | $GITHUB_LINK$GDRIVE_LINK |" >> CATALOG.md
           done
+          
+          echo "" >> CATALOG.md
+          echo "_Última actualización: $(date +'%Y-%m-%d %H:%M UTC')_" >> CATALOG.md
+          echo "" >> CATALOG.md
+          
+          # Actualizar README
+          if grep -q "## 📱 Catálogo de $APP" README.md 2>/dev/null; then
+            # Reemplazar sección existente
+            awk -v app="$APP" '
+              /## 📱 Catálogo de / && $0 ~ app {flag=1; next}
+              /## / && flag {flag=0}
+              !flag
+            ' README.md > README.tmp
+            cat README.tmp CATALOG.md > README.md
+            rm README.tmp
+          else
+            # Agregar nueva sección
+            cat CATALOG.md >> README.md
+          fi
+          
+          rm CATALOG.md
+          echo "✅ Catálogo generado correctamente"
 
-          echo -e "$CAT_FOOTER" >> CATALOG.md
-
-          # Reemplazar sección anterior de catálogo en README
-          awk '/## 📱 Catálogo/{flag=1;next}/<\/div>/{flag=0;next}!flag' README.md > README.tmp
-          cat CATALOG.md README.tmp > README.md
-          rm README.tmp CATALOG.md
-
-          echo "✅ Catálogo visual generado y agregado al README."
-
-      - name: 💾 Commit y push
+      - name: 💾 Commit y push con Git LFS
         run: |
+          set -e
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "📦 Publicada ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }} con catálogo visual multiplataforma"
-          git push
+          
+          # Agregar archivos
+          git add .gitattributes
+          git add apps/ README.md
+          
+          # Verificar si hay cambios
+          if git diff --staged --quiet; then
+            echo "ℹ️ No hay cambios para commitear"
+            exit 0
+          fi
+          
+          # Commit
+          git commit -m "📦 Publicada ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}" \
+                     -m "Plataformas actualizadas con catálogo visual" \
+                     -m "Assets: ${{ github.event.inputs.assets }}"
+          
+          # Push con LFS
+          git lfs push --all origin main
+          git push origin main
+          
+          echo "✅ Cambios publicados correctamente"
+
+      - name: 📋 Resumen de publicación
+        if: always()
+        run: |
+          echo "### 📊 Resumen de Publicación" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**App:** ${{ github.event.inputs.app_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Versión:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag origen:** ${{ github.event.inputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "apps/${{ github.event.inputs.app_name }}" ]; then
+            echo "#### 📦 Archivos publicados:" >> $GITHUB_STEP_SUMMARY
+            find apps/${{ github.event.inputs.app_name }} -type f -exec ls -lh {} \; | \
+              awk '{print "- " $9 " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ github.event.inputs.gdrive_folder_id }}" != "" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Archivos también subidos a Google Drive**" >> $GITHUB_STEP_SUMMARY
+          fi
