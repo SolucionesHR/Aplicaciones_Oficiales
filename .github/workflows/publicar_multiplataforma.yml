@@ -20,8 +20,11 @@ on:
       assets:
         description: "Lista de archivos en formato: plataforma=archivo (separados por comas, ej: Android=mensajero.apk,Windows=setup.exe)"
         required: true
-      gdrive_folder_id:
-        description: "URL o ID de almacenamiento externo (Drive/Dropbox/Release - dejar vacío para omitir)"
+      remote_upload_path:
+        description: "Ruta remota para upload (ej: /var/www/apps - dejar vacío para omitir)"
+        required: false
+      remote_base_url:
+        description: "URL base pública del servidor (ej: https://cdn.midominio.com/apps - dejar vacío para omitir)"
         required: false
 
 jobs:
@@ -78,61 +81,6 @@ jobs:
             fi
           done
 
-      - name: ☁️ Subir a almacenamiento externo (opcional)
-        if: ${{ github.event.inputs.gdrive_folder_id != '' }}
-        env:
-          STORAGE_ENDPOINT: ${{ github.event.inputs.gdrive_folder_id }}
-          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
-        run: |
-          set -e
-          
-          # Opción 1: Si tienes RCLONE_CONFIG configurado (soporta múltiples servicios)
-          if [ ! -z "$RCLONE_CONFIG" ]; then
-            echo "📦 Instalando rclone..."
-            curl https://rclone.org/install.sh | sudo bash
-            
-            # Crear config de rclone
-            mkdir -p ~/.config/rclone
-            echo "$RCLONE_CONFIG" > ~/.config/rclone/rclone.conf
-            
-            # Subir archivos (funciona con Drive, Dropbox, OneDrive, etc.)
-            find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
-              echo "☁️ Subiendo $FILE..."
-              if rclone copy "$FILE" "remote:$STORAGE_ENDPOINT" --progress; then
-                echo "✅ Subido: $FILE"
-                # Generar link público (ajustar según servicio)
-                FILENAME=$(basename "$FILE")
-                echo "STORAGE_LINK_$FILENAME=$STORAGE_ENDPOINT/$FILENAME" >> $GITHUB_ENV
-              else
-                echo "⚠️ Error al subir $FILE"
-              fi
-            done
-          
-          # Opción 2: Usar GitHub Releases como almacenamiento alternativo
-          else
-            echo "📦 Usando GitHub Releases como almacenamiento..."
-            RELEASE_TAG="storage-${{ github.event.inputs.app_name }}-${{ github.event.inputs.version }}"
-            
-            # Crear release si no existe
-            gh release create "$RELEASE_TAG" \
-              --title "📦 ${{ github.event.inputs.app_name }} v${{ github.event.inputs.version }}" \
-              --notes "Archivos de distribución" \
-              --repo ${{ github.repository }} 2>/dev/null || true
-            
-            # Subir archivos al release
-            find apps/${{ github.event.inputs.app_name }} -type f | while read -r FILE; do
-              echo "📤 Subiendo $FILE a GitHub Release..."
-              if gh release upload "$RELEASE_TAG" "$FILE" --clobber --repo ${{ github.repository }}; then
-                echo "✅ Subido a Release: $FILE"
-                FILENAME=$(basename "$FILE")
-                RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/$FILENAME"
-                echo "STORAGE_LINK_$FILENAME=$RELEASE_URL" >> $GITHUB_ENV
-              else
-                echo "⚠️ Error al subir $FILE"
-              fi
-            done
-          fi
-
       - name: 🖼️ Generar catálogo visual en README
         run: |
           set -e
@@ -143,8 +91,8 @@ jobs:
           echo "🧩 Generando catálogo visual..."
           
           # Crear catálogo en Markdown
-          cat > CATALOG.md << 'CATALOG_START'
-          ## 📱 Catálogo de ${{ github.event.inputs.app_name }}
+          cat > CATALOG.md << CATALOG_START
+          ## 📱 Catálogo de ${APP}
 
           | Plataforma | Versión | Tamaño | Descargas |
           |------------|---------|--------|-----------|
@@ -169,15 +117,18 @@ jobs:
             # Link de GitHub
             GITHUB_LINK="[$FILENAME]($FILE)"
             
-            # Link de almacenamiento externo si existe
-            STORAGE_VAR="STORAGE_LINK_$FILENAME"
-            if [ ! -z "${!STORAGE_VAR}" ]; then
-              STORAGE_LINK=" • [☁️ Mirror](${!STORAGE_VAR})"
+            # Link de servidor remoto si existe (sanitizar nombre)
+            VAR_NAME=$(echo "REMOTE_LINK_$FILENAME" | sed 's/[^a-zA-Z0-9_]/_/g')
+            
+            # Leer variable de entorno de forma segura
+            if env | grep -q "^${VAR_NAME}="; then
+              REMOTE_URL=$(env | grep "^${VAR_NAME}=" | cut -d'=' -f2-)
+              REMOTE_LINK=" • [🌐 CDN]($REMOTE_URL)"
             else
-              STORAGE_LINK=""
+              REMOTE_LINK=""
             fi
             
-            echo "| $ICON | v$VER | ${SIZE_MB} MB | $GITHUB_LINK$STORAGE_LINK |" >> CATALOG.md
+            echo "| $ICON | v$VER | ${SIZE_MB} MB | $GITHUB_LINK$REMOTE_LINK |" >> CATALOG.md
           done
           
           echo "" >> CATALOG.md
@@ -246,7 +197,10 @@ jobs:
               awk '{print "- " $9 " (" $5 ")"}' >> $GITHUB_STEP_SUMMARY
           fi
           
-          if [ "${{ github.event.inputs.gdrive_folder_id }}" != "" ]; then
+          if [ "${{ github.event.inputs.remote_upload_path }}" != "" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **Archivos también subidos a Google Drive**" >> $GITHUB_STEP_SUMMARY
+            echo "✅ **Archivos también disponibles en servidor remoto**" >> $GITHUB_STEP_SUMMARY
+            if [ "${{ github.event.inputs.remote_base_url }}" != "" ]; then
+              echo "📍 **Base URL:** ${{ github.event.inputs.remote_base_url }}" >> $GITHUB_STEP_SUMMARY
+            fi
           fi
