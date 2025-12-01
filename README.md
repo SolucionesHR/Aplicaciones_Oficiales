@@ -60,3 +60,10 @@ Estamos listos para ayudarte a llevar tu proyecto al siguiente nivel.
 
 _Última actualización: 2025-11-12 12:56 UTC_
 
+## 📱 Catálogo de Pedido Diagital Admin
+
+| Plataforma | Versión | Tamaño | Descargas |
+|------------|---------|--------|-----------|
+
+_Última actualización: 2025-12-01 10:13 UTC_
+
